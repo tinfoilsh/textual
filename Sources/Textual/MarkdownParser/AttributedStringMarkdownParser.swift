@@ -23,9 +23,10 @@ public struct AttributedStringMarkdownParser: MarkupParser {
   }
 
   public func attributedString(for input: String) throws -> AttributedString {
-    try processor.expand(
+    let preprocessed = InlineHTMLPreprocessor.convert(input)
+    return try processor.expand(
       AttributedString(
-        markdown: input,
+        markdown: preprocessed,
         including: \.textual,
         options: options,
         baseURL: baseURL
