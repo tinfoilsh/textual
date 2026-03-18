@@ -59,6 +59,11 @@ extension TextFragment {
 }
 
 extension Text {
+  /// Creates a Text from attributed content without attachment sizing.
+  init(attributedString: some AttributedStringProtocol, in environment: TextEnvironmentValues) {
+    self.init(attributedString: attributedString, attachmentSizes: [:], in: environment)
+  }
+
   fileprivate init(
     attributedString: some AttributedStringProtocol,
     attachmentSizes: [AttachmentKey: CGSize],
