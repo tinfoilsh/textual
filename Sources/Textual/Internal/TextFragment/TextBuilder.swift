@@ -101,9 +101,7 @@ extension Text {
       return text
     }
 
-    self = textValues.reduce(Text(verbatim: "")) { partialResult, text in
-      Text("\(partialResult)\(text)")
-    }
+    self = textValues.reduce(Text(verbatim: ""), +)
   }
 
   private init(placeholderSize size: CGSize) {
