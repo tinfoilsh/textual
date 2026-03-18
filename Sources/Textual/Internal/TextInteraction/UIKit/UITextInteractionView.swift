@@ -109,10 +109,12 @@
 
     @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
       let location = gesture.location(in: self)
-      guard let url = model.url(for: location) else {
-        return
+      if let url = model.url(for: location) {
+        openURL(url)
+      } else if model.selectedRange != nil {
+        model.selectedRange = nil
+        resignFirstResponder()
       }
-      openURL(url)
     }
 
     @objc private func share(_ sender: Any?) {
