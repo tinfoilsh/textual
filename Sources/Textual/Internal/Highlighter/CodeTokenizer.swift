@@ -20,8 +20,9 @@ struct CodeToken: Hashable, Sendable {
 }
 
 #if canImport(JavaScriptCore)
-  actor CodeTokenizer {
+  final class CodeTokenizer: @unchecked Sendable {
     private let context: JSContext
+    private let lock = NSLock()
     private let logger = Logger(category: .codeTokenizer)
 
     static let shared = CodeTokenizer()
@@ -47,7 +48,14 @@ struct CodeToken: Hashable, Sendable {
       self.context = context
     }
 
-    func tokenize(code: String, language: String) -> [CodeToken] {
+    func tokenize(code: String, language: String) async -> [CodeToken] {
+      tokenizeSync(code: code, language: language)
+    }
+
+    func tokenizeSync(code: String, language: String) -> [CodeToken] {
+      lock.lock()
+      defer { lock.unlock() }
+
       guard
         let tokenizeCode = context.objectForKeyedSubscript("tokenizeCode"),
         let result = tokenizeCode.call(withArguments: [code, language]),
@@ -69,7 +77,7 @@ struct CodeToken: Hashable, Sendable {
     }
   }
 #else
-  actor CodeTokenizer {
+  final class CodeTokenizer: @unchecked Sendable {
     private let logger = Logger(category: .codeTokenizer)
 
     static let shared = CodeTokenizer()
@@ -79,7 +87,11 @@ struct CodeToken: Hashable, Sendable {
       return nil
     }
 
-    func tokenize(code: String, language: String) -> [CodeToken] {
+    func tokenize(code: String, language: String) async -> [CodeToken] {
+      [CodeToken(content: code, type: .plain)]
+    }
+
+    func tokenizeSync(code: String, language: String) -> [CodeToken] {
       [CodeToken(content: code, type: .plain)]
     }
   }
