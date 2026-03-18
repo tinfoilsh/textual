@@ -20,43 +20,14 @@ extension StructuredText {
     }
 
     var body: some View {
-      Group(subviews: content) { children in
-        BlockVStackLayout(textAlignment: textAlignment) {
-          ForEach(children) {
-            BlockLayoutView($0)
-          }
-        }
+      VStack(alignment: textAlignment.horizontalAlignment, spacing: 0) {
+        content
       }
     }
   }
-}
 
-extension StructuredText {
   struct BlockAlignmentKey: LayoutValueKey {
     static let defaultValue: TextAlignment? = nil
-  }
-
-  fileprivate struct BlockLayoutView<Content: View>: View {
-    @Environment(\.listItemSpacingEnabled) private var listItemSpacingEnabled
-    @Environment(\.resolvedListItemSpacing) private var resolvedListItemSpacing
-
-    @State private var blockSpacing = BlockSpacing()
-
-    private let content: Content
-
-    init(_ content: Content) {
-      self.content = content
-    }
-
-    var body: some View {
-      // Read the block spacing preference and apply it as a layout value
-      content
-        .onPreferenceChange(BlockSpacingKey.self) { @MainActor value in
-          // Override with the resolved list item spacing if enabled
-          blockSpacing = listItemSpacingEnabled ? resolvedListItemSpacing : value
-        }
-        .layoutValue(key: BlockSpacingKey.self, value: blockSpacing)
-    }
   }
 
   fileprivate struct BlockVStackLayout: Layout {
@@ -85,10 +56,6 @@ extension StructuredText {
       proposal: ProposedViewSize,
       subviews: Subviews, cache: inout Cache
     ) -> CGSize {
-      if let width = proposal.width, width <= 0 {
-        return .zero
-      }
-
       var size = CGSize.zero
 
       for view in subviews {
@@ -135,6 +102,16 @@ extension StructuredText {
           currentY += cache.spacings[index]
         }
       }
+    }
+  }
+}
+
+extension TextAlignment {
+  fileprivate var horizontalAlignment: HorizontalAlignment {
+    switch self {
+    case .leading: .leading
+    case .center: .center
+    case .trailing: .trailing
     }
   }
 }
