@@ -68,6 +68,21 @@ extension StructuredText.ListItemStyle where Self == StructuredText.DefaultListI
 
 @available(tvOS, unavailable)
 @available(watchOS, unavailable)
+#Preview("OrderedList - GitHub Style") {
+  StructuredText(
+    markdown: """
+      1. Test
+      1. Test
+      1. A longer item that wraps to multiple lines to verify alignment
+      """
+  )
+  .padding()
+  .textual.structuredTextStyle(.gitHub)
+  .textual.textSelection(.enabled)
+}
+
+@available(tvOS, unavailable)
+@available(watchOS, unavailable)
 #Preview("UnorderedList") {
   StructuredText(
     markdown: """

@@ -3,12 +3,15 @@ import SwiftUI
 extension VerticalAlignment {
   private enum FirstTextCenterAlignment: AlignmentID {
     static func defaultValue(in context: ViewDimensions) -> CGFloat {
-      // Calculate the vertical center of the first line of text. The first line height is
-      // the total height minus the distance between first and last baselines (which gives
-      // the height of all lines except the first), then divide by 2 to get the center point.
-      let firstLineHeight =
-        context.height - (context[.lastTextBaseline] - context[.firstTextBaseline])
-      return firstLineHeight / 2
+      // Anchor on the first text baseline. This is immune to asymmetric padding
+      // (e.g. block spacing with only top or only bottom padding) that would skew
+      // a height-based center calculation.
+      //
+      // Both the marker and block content use the same font, so their baselines
+      // sit at the same relative position within the text line. Aligning on the
+      // baseline ensures the marker and first line of content always match,
+      // regardless of any surrounding padding or line spacing.
+      context[.firstTextBaseline]
     }
   }
 
