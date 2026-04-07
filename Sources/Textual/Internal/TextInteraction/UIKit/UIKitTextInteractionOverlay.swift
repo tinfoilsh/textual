@@ -31,6 +31,7 @@
       uiView.model = model
       uiView.exclusionRects = overflowFrames
       uiView.openURL = context.environment.openURL
+      uiView.installInteractionIfNeeded()
     }
   }
 #endif

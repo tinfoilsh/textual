@@ -26,7 +26,8 @@
     let logger = Logger(category: .textInteraction)
 
     private(set) lazy var _tokenizer = UITextInputStringTokenizer(textInput: self)
-    private let selectionInteraction: UITextInteraction
+    private var selectionInteraction: UITextInteraction?
+    private var tapGesture: UITapGestureRecognizer?
 
     init(
       model: TextSelectionModel,
@@ -36,12 +37,12 @@
       self.model = model
       self.exclusionRects = exclusionRects
       self.openURL = openURL
-      self.selectionInteraction = UITextInteraction(for: .nonEditable)
 
       super.init(frame: .zero)
       self.backgroundColor = .clear
 
-      setUp()
+      setUpCallbacks()
+      installInteractionIfNeeded()
     }
 
     required init?(coder: NSCoder) {
@@ -84,7 +85,7 @@
       )
     }
 
-    private func setUp() {
+    private func setUpCallbacks() {
       model.selectionWillChange = { [weak self] in
         guard let self else { return }
         self.inputDelegate?.selectionWillChange(self)
@@ -93,18 +94,26 @@
         guard let self else { return }
         self.inputDelegate?.selectionDidChange(self)
       }
+    }
 
-      let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
-      addGestureRecognizer(tapGesture)
+    func installInteractionIfNeeded() {
+      guard selectionInteraction == nil, model.hasText else { return }
 
-      selectionInteraction.textInput = self
-      selectionInteraction.delegate = self
+      let interaction = UITextInteraction(for: .nonEditable)
 
-      for gesture in selectionInteraction.gesturesForFailureRequirements {
-        tapGesture.require(toFail: gesture)
+      let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
+      addGestureRecognizer(tap)
+      self.tapGesture = tap
+
+      interaction.textInput = self
+      interaction.delegate = self
+
+      for gesture in interaction.gesturesForFailureRequirements {
+        tap.require(toFail: gesture)
       }
 
-      addInteraction(selectionInteraction)
+      addInteraction(interaction)
+      self.selectionInteraction = interaction
     }
 
     @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
