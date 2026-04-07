@@ -19,7 +19,12 @@
       }
       didSet {
         if selectedRange != nil {
+          selectionLayoutCollection = AnyTextLayoutCollection(layoutCollection)
           coordinator?.modelDidSelectText(self)
+        } else {
+          selectionLayoutCollection = nil
+          deferredSelectedRange = nil
+          deferredSelectionLayoutCollection = nil
         }
         selectionDidChange?()
       }
@@ -37,6 +42,18 @@
     @ObservationIgnored
     private weak var coordinator: TextSelectionCoordinator?
 
+    @ObservationIgnored
+    private var selectionLayoutCollection: AnyTextLayoutCollection?
+
+    @ObservationIgnored
+    private var deferredSelectedRange: TextRange?
+
+    @ObservationIgnored
+    private var deferredSelectionLayoutCollection: AnyTextLayoutCollection?
+
+    @ObservationIgnored
+    private var isInteractionActive = false
+
     init(
       layoutCollection: any TextLayoutCollection = EmptyTextLayoutCollection(),
       coordinator: TextSelectionCoordinator? = nil
@@ -50,21 +67,68 @@
         return
       }
 
-      let oldLayoutCollection = self.layoutCollection
+      let previousLayoutCollection = AnyTextLayoutCollection(self.layoutCollection)
       self.layoutCollection = layoutCollection
 
-      guard
-        let selectedRange,
-        layoutCollection.needsPositionReconciliation(with: oldLayoutCollection)
-      else {
+      guard let selectedRange else {
+        return
+      }
+
+      let selectionLayoutCollection = self.selectionLayoutCollection ?? previousLayoutCollection
+
+      guard layoutCollection.needsPositionReconciliation(with: selectionLayoutCollection) else {
+        self.selectionLayoutCollection = AnyTextLayoutCollection(layoutCollection)
+        return
+      }
+
+      let reconciledRange = layoutCollection.reconcileRange(
+        selectedRange,
+        from: selectionLayoutCollection
+      )
+
+      guard !isInteractionActive else {
+        deferredSelectedRange = reconciledRange
+        deferredSelectionLayoutCollection = AnyTextLayoutCollection(layoutCollection)
+        return
+      }
+
+      guard reconciledRange != selectedRange else {
+        self.selectionLayoutCollection = AnyTextLayoutCollection(layoutCollection)
         return
       }
 
       // Try to reconcile the selected text range
-      self.selectedRange = layoutCollection.reconcileRange(
-        selectedRange,
-        from: oldLayoutCollection
-      )
+      self.selectedRange = reconciledRange
+    }
+
+    func setInteractionActive(_ isActive: Bool) {
+      guard isInteractionActive != isActive else {
+        return
+      }
+
+      isInteractionActive = isActive
+
+      guard !isActive else {
+        return
+      }
+
+      let deferredSelectedRange = self.deferredSelectedRange
+      let deferredSelectionLayoutCollection = self.deferredSelectionLayoutCollection
+
+      self.deferredSelectedRange = nil
+      self.deferredSelectionLayoutCollection = nil
+
+      guard deferredSelectedRange != selectedRange else {
+        if let deferredSelectionLayoutCollection {
+          selectionLayoutCollection = deferredSelectionLayoutCollection
+        }
+        return
+      }
+
+      if let deferredSelectionLayoutCollection {
+        selectionLayoutCollection = deferredSelectionLayoutCollection
+      }
+      selectedRange = deferredSelectedRange
     }
 
     func setCoordinator(_ coordinator: TextSelectionCoordinator?) {
@@ -112,6 +176,10 @@
 
     func offset(from: TextPosition, to: TextPosition) -> Int {
       layoutCollection.characterIndex(at: to) - layoutCollection.characterIndex(at: from)
+    }
+
+    func layoutDirection(at position: TextPosition) -> LayoutDirection {
+      layoutCollection.layoutDirection(at: position.indexPath)
     }
 
     func firstRect(for range: TextRange) -> CGRect {

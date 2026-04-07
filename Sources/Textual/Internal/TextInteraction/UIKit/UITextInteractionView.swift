@@ -154,11 +154,13 @@
 
     func interactionWillBegin(_ interaction: UITextInteraction) {
       logger.debug("interactionWillBegin")
+      model.setInteractionActive(true)
       _ = self.becomeFirstResponder()
     }
 
     func interactionDidEnd(_ interaction: UITextInteraction) {
       logger.debug("interactionDidEnd")
+      model.setInteractionActive(false)
     }
   }
 

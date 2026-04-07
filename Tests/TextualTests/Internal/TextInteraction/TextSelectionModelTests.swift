@@ -877,6 +877,62 @@
       #expect(result == model.endPosition)
     }
 
+    @Test
+    func setLayoutCollectionSkipsEquivalentSelectionMutation() throws {
+      // given
+      let baseCollection = try TestTextLayoutCollection.fixture(
+        named: "two-paragraphs-bidi",
+        identity: 1
+      )
+      let updatedCollection = try TestTextLayoutCollection.fixture(
+        named: "two-paragraphs-bidi",
+        identity: 2
+      )
+      let model = TextSelectionModel(layoutCollection: baseCollection)
+      model.selectedRange = TextRange(start: model.startPosition, end: model.endPosition)
+
+      var changeCount = 0
+      model.selectionDidChange = {
+        changeCount += 1
+      }
+
+      // when
+      model.setLayoutCollection(updatedCollection)
+
+      // then
+      #expect(changeCount == 0)
+      #expect(model.selectedRange == TextRange(start: model.startPosition, end: model.endPosition))
+    }
+
+    @Test
+    func setLayoutCollectionDefersEquivalentSelectionMutationWhileInteracting() throws {
+      // given
+      let baseCollection = try TestTextLayoutCollection.fixture(
+        named: "two-paragraphs-bidi",
+        identity: 1
+      )
+      let updatedCollection = try TestTextLayoutCollection.fixture(
+        named: "two-paragraphs-bidi",
+        identity: 2
+      )
+      let model = TextSelectionModel(layoutCollection: baseCollection)
+      model.selectedRange = TextRange(start: model.startPosition, end: model.endPosition)
+
+      var changeCount = 0
+      model.selectionDidChange = {
+        changeCount += 1
+      }
+
+      // when
+      model.setInteractionActive(true)
+      model.setLayoutCollection(updatedCollection)
+      model.setInteractionActive(false)
+
+      // then
+      #expect(changeCount == 0)
+      #expect(model.selectedRange == TextRange(start: model.startPosition, end: model.endPosition))
+    }
+
     #if os(iOS)
       @Test(.disabled())
       @MainActor
@@ -902,6 +958,39 @@
         containsStart: containsStart,
         containsEnd: containsEnd
       )
+    }
+  }
+
+  private struct TestTextLayoutCollection: TextLayoutCollection {
+    let base: CodableTextLayoutCollection
+    let identity: Int
+
+    var layouts: [any Textual.TextLayout] {
+      base.layouts
+    }
+
+    func isEqual(to other: any Textual.TextLayoutCollection) -> Bool {
+      identity == (other as? Self)?.identity
+    }
+
+    func needsPositionReconciliation(with other: any Textual.TextLayoutCollection) -> Bool {
+      true
+    }
+
+    func index(of layout: Text.Layout) -> Int? {
+      nil
+    }
+  }
+
+  private extension TestTextLayoutCollection {
+    static func fixture(named name: String, identity: Int) throws -> Self {
+      let url = Bundle.module.url(
+        forResource: "Fixtures/TextSelectionModel/\(name)",
+        withExtension: "json"
+      )
+      let data = try url.map { try Data(contentsOf: $0) } ?? Data()
+      let base = try JSONDecoder().decode(CodableTextLayoutCollection.self, from: data)
+      return Self(base: base, identity: identity)
     }
   }
 #endif
