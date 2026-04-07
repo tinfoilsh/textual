@@ -101,11 +101,26 @@ extension Text {
       return text
     }
 
-    self = textValues.reduce(Text(verbatim: ""), +)
+    self = Self.combined(textValues[...])
   }
 
   private init(placeholderSize size: CGSize) {
     self.init(SwiftUI.Image(size: size) { _ in })
+  }
+
+  private static func combined(_ textValues: ArraySlice<Text>) -> Text {
+    switch textValues.count {
+    case 0:
+      return Text(verbatim: "")
+    case 1:
+      return textValues[textValues.startIndex]
+    default:
+      let midpoint = textValues.index(
+        textValues.startIndex,
+        offsetBy: textValues.count / 2
+      )
+      return combined(textValues[..<midpoint]) + combined(textValues[midpoint...])
+    }
   }
 }
 
