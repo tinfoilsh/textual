@@ -18,6 +18,7 @@ import SwiftUI
 struct WithInlineStyle<Content: View>: View {
   @Environment(\.inlineStyle) private var style
   @Environment(\.textEnvironment) private var environment
+  @State private var cache = InlineStyleCache()
 
   private let input: AttributedString
   private let content: (AttributedString) -> Content
@@ -31,7 +32,16 @@ struct WithInlineStyle<Content: View>: View {
   }
 
   var body: some View {
-    content(resolve(attributedString: input, style: style, in: environment))
+    let key = InlineStyleCache.Key(
+      inputHash: input.hashValue,
+      styleHash: style.hashValue,
+      environmentHash: environment.hashValue
+    )
+    content(
+      cache.value(for: key) {
+        resolve(attributedString: input, style: style, in: environment)
+      }
+    )
   }
 
   private func resolve(
@@ -70,5 +80,28 @@ struct WithInlineStyle<Content: View>: View {
     }
 
     return output
+  }
+}
+
+@MainActor
+private final class InlineStyleCache {
+  struct Key: Hashable {
+    let inputHash: Int
+    let styleHash: Int
+    let environmentHash: Int
+  }
+
+  private var cachedKey: Key?
+  private var cachedValue: AttributedString?
+
+  func value(for key: Key, build: () -> AttributedString) -> AttributedString {
+    if let cachedValue, cachedKey == key {
+      return cachedValue
+    }
+
+    let value = build()
+    cachedKey = key
+    cachedValue = value
+    return value
   }
 }

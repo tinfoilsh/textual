@@ -16,6 +16,8 @@ struct HighlightedTextFragment: View {
   private let languageHint: String?
   private let theme: StructuredText.HighlighterTheme
 
+  @State private var cache = HighlightedCodeCache()
+
   init(
     _ content: AttributedSubstring,
     languageHint: String?,
@@ -27,7 +29,13 @@ struct HighlightedTextFragment: View {
   }
 
   var body: some View {
-    TextFragment(highlightedCode)
+    let key = HighlightedCodeCache.Key(
+      code: String(content.characters[...]),
+      languageHint: languageHint,
+      theme: theme,
+      environment: textEnvironment
+    )
+    TextFragment(cache.value(for: key) { highlightedCode })
       .foregroundStyle(theme.foregroundColor)
   }
 
@@ -57,5 +65,32 @@ struct HighlightedTextFragment: View {
       result.append(tokenContent)
     }
     return result
+  }
+}
+
+// Per-instance cache that retains the last-produced `AttributedString` keyed
+// by code + language + theme + environment. Tokenization and attribute merging
+// are expensive; without this cache they re-run on every view update, which
+// together with Text's CoreText shaping becomes a measurable hang.
+@MainActor
+final class HighlightedCodeCache {
+  struct Key: Hashable {
+    let code: String
+    let languageHint: String?
+    let theme: StructuredText.HighlighterTheme
+    let environment: TextEnvironmentValues
+  }
+
+  private var cachedKey: Key?
+  private var cachedValue: AttributedString?
+
+  func value(for key: Key, build: () -> AttributedString) -> AttributedString {
+    if let cachedValue, cachedKey == key {
+      return cachedValue
+    }
+    let value = build()
+    cachedKey = key
+    cachedValue = value
+    return value
   }
 }

@@ -4,6 +4,7 @@ extension AttributedStringMarkdownParser {
   /// A syntax extension that replaces matched tokens after Markdown parsing.
   public struct SyntaxExtension {
     let patterns: [PatternTokenizer.Pattern]
+    let cacheIdentity: AnyHashable
     let replace:
       (
         _ token: PatternTokenizer.Token,
@@ -16,7 +17,11 @@ extension AttributedStringMarkdownParser.SyntaxExtension {
   /// Replaces `:shortcode:` sequences using the provided custom emoji definitions.
   public static func emoji(_ emoji: Set<Emoji>) -> Self {
     guard !emoji.isEmpty else {
-      return Self(patterns: [], replace: { _, _ in nil })
+      return Self(
+        patterns: [],
+        cacheIdentity: "emoji-empty",
+        replace: { _, _ in nil }
+      )
     }
 
     let emojiMap = Dictionary(
@@ -24,8 +29,11 @@ extension AttributedStringMarkdownParser.SyntaxExtension {
         (emoji.shortcode, emoji)
       }
     )
+    let cacheIdentity = emoji
+      .map { "\($0.shortcode)\u{0}\($0.url.absoluteString)" }
+      .sorted()
 
-    return Self(patterns: [.emoji]) { token, attributes in
+    return Self(patterns: [.emoji], cacheIdentity: cacheIdentity) { token, attributes in
       guard let shortcode = token.capturedContent, let emoji = emojiMap[shortcode] else {
         return nil
       }
@@ -39,7 +47,7 @@ extension AttributedStringMarkdownParser.SyntaxExtension {
 
   /// Replaces inline and block math expressions with attachments.
   public static var math: Self {
-    .init(patterns: [.mathBlock, .mathInline]) { token, attributes in
+    .init(patterns: [.mathBlock, .mathInline], cacheIdentity: "math") { token, attributes in
       guard let latex = token.capturedContent else {
         return nil
       }

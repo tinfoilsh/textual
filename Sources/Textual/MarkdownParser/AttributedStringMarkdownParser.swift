@@ -11,6 +11,14 @@ public struct AttributedStringMarkdownParser: MarkupParser {
   private let baseURL: URL?
   private let options: AttributedString.MarkdownParsingOptions
   private let processor: PatternProcessor
+  private let cacheConfiguration: CacheConfiguration
+
+  @MainActor
+  private static let cache: NSCache<KeyBox<CacheKey>, Box<AttributedString>> = {
+    let cache = NSCache<KeyBox<CacheKey>, Box<AttributedString>>()
+    cache.countLimit = 128
+    return cache
+  }()
 
   public init(
     baseURL: URL?,
@@ -20,11 +28,21 @@ public struct AttributedStringMarkdownParser: MarkupParser {
     self.baseURL = baseURL
     self.options = options
     self.processor = PatternProcessor(syntaxExtensions: syntaxExtensions)
+    self.cacheConfiguration = CacheConfiguration(
+      baseURL: baseURL?.absoluteString,
+      optionsDescription: String(reflecting: options),
+      syntaxExtensionCacheKeys: syntaxExtensions.map(\.cacheIdentity)
+    )
   }
 
   public func attributedString(for input: String) throws -> AttributedString {
+    let cacheKey = CacheKey(input: input, configuration: cacheConfiguration)
+    if let cached = Self.cache.object(forKey: KeyBox(cacheKey)) {
+      return cached.wrappedValue
+    }
+
     let preprocessed = InlineHTMLPreprocessor.convert(input)
-    return try processor.expand(
+    let attributedString = try processor.expand(
       AttributedString(
         markdown: preprocessed,
         including: \.textual,
@@ -32,6 +50,21 @@ public struct AttributedStringMarkdownParser: MarkupParser {
         baseURL: baseURL
       )
     )
+    Self.cache.setObject(Box(attributedString), forKey: KeyBox(cacheKey))
+    return attributedString
+  }
+}
+
+extension AttributedStringMarkdownParser {
+  private struct CacheConfiguration: Hashable {
+    let baseURL: String?
+    let optionsDescription: String
+    let syntaxExtensionCacheKeys: [AnyHashable]
+  }
+
+  private struct CacheKey: Hashable {
+    let input: String
+    let configuration: CacheConfiguration
   }
 }
 
