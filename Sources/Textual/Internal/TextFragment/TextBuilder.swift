@@ -2,61 +2,10 @@ import SwiftUI
 
 // MARK: - Overview
 //
-// TextBuilder constructs SwiftUI.Text from attributed content with inline attachments.
-// It caches Text values keyed by attachment sizes to avoid unnecessary rebuilds during
-// resize. When the container size changes, attachment sizes are recomputed and the cache
-// is consulted. If the new sizes hash to the same key, the cached Text is reused.
-//
-// The cache key is derived from the hash of [AttachmentKey: CGSize]. Since attachment
-// sizes often remain constant or repeat during incremental resize (e.g., window resizing),
-// this compact key enables effective caching without storing the full proposal or
-// attributed string. The cache has a count limit of 10 to prevent unbounded growth.
-//
-// Runs with attachments are converted to placeholder images sized by the attachment's
-// sizeThatFits(_:in:) result. Placeholders are tagged with AttachmentAttribute so overlays
-// can identify and render the actual attachment views at the resolved layout positions.
-
-extension TextFragment {
-  @MainActor @Observable final class TextBuilder {
-    var text: Text
-
-    @ObservationIgnored private let content: Content
-    @ObservationIgnored private let cache: NSCache<KeyBox<[AttachmentKey: CGSize]>, Box<Text>>
-
-    init(_ content: Content, environment: TextEnvironmentValues) {
-      let attachmentSizes = content.attachmentSizes(for: .unspecified, in: environment)
-
-      self.text = Text(
-        attributedString: content,
-        attachmentSizes: attachmentSizes,
-        in: environment
-      )
-      self.content = content
-      self.cache = NSCache()
-      self.cache.countLimit = 10
-
-      self.cache.setObject(Box(self.text), forKey: KeyBox(attachmentSizes))
-    }
-
-    func sizeChanged(_ size: CGSize, environment: TextEnvironmentValues) {
-      let attachmentSizes = content.attachmentSizes(for: .init(size), in: environment)
-      let cacheKey = KeyBox(attachmentSizes)
-
-      if let text = cache.object(forKey: cacheKey) {
-        self.text = text.wrappedValue
-      } else {
-        let text = Text(
-          attributedString: content,
-          attachmentSizes: attachmentSizes,
-          in: environment
-        )
-        cache.setObject(Box(text), forKey: cacheKey)
-
-        self.text = text
-      }
-    }
-  }
-}
+// Builds a SwiftUI.Text from attributed content, converting attachment runs into
+// placeholder images sized by each attachment's `sizeThatFits(_:in:)` result.
+// Placeholders are tagged with `AttachmentAttribute` so overlays can identify and
+// render the actual attachment views at the resolved layout positions.
 
 extension Text {
   /// Creates a Text from attributed content without attachment sizing.

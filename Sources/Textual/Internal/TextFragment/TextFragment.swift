@@ -25,21 +25,90 @@ import SwiftUI
 // TextFragment is used by InlineText and StructuredText (via BlockContent) to render
 // attributed content with inline attachments, links, and selection.
 
-struct TextFragment<Content: AttributedStringProtocol>: View {
+struct TextFragment: View {
   @Environment(\.textEnvironment) private var textEnvironment
+  #if TEXTUAL_ENABLE_TEXT_SELECTION
+    @Environment(\.textSelection) private var textSelection
+  #endif
 
-  private let content: Content
+  private let content: AttributedString
 
-  init(_ content: Content) {
+  init(_ content: AttributedString) {
     self.content = content
   }
 
   var body: some View {
-    Text(attributedString: content, in: textEnvironment)
+    CachedTextFragment(
+      content: content,
+      attachments: content.attachments(),
+      hasLinks: installsLinkInteraction,
+      environment: textEnvironment
+    )
+  }
+
+  private var installsLinkInteraction: Bool {
+    guard content.containsValues(for: [\.link]) else {
+      return false
+    }
+
+    #if TEXTUAL_ENABLE_TEXT_SELECTION && canImport(UIKit)
+      if textSelection.allowsSelection {
+        return false
+      }
+    #endif
+
+    return true
+  }
+}
+
+// Holds the rendered `Text` in a @State-backed store so SwiftUI re-uses the
+// same `Text` value across view updates. `Text(attributedString:)` maintains
+// an internal metrics cache that is dropped when the instance is recreated;
+// keeping the same instance avoids repeated CoreText shaping during layout
+// passes.
+private struct CachedTextFragment: View {
+  let content: AttributedString
+  let attachments: Set<AnyAttachment>
+  let hasLinks: Bool
+  let environment: TextEnvironmentValues
+
+  @State private var store = TextStore()
+
+  var body: some View {
+    let text = store.text(for: content, environment: environment)
+
+    return text
       .customAttribute(TextFragmentAttribute())
       .modifier(TextSelectionBackground())
-      .modifier(AttachmentOverlay(attachments: content.attachments()))
-      .modifier(TextLinkInteraction())
+      .modifier(AttachmentOverlay(attachments: attachments))
+      .modifier(TextLinkInteraction(hasLinks: hasLinks))
+  }
+}
+
+@MainActor
+private final class TextStore {
+  private var cachedText: Text?
+  private var contentHash: Int?
+  private var environmentHash: Int?
+
+  func text(
+    for content: AttributedString,
+    environment: TextEnvironmentValues
+  ) -> Text {
+    let newContentHash = content.hashValue
+    let newEnvironmentHash = environment.hashValue
+
+    if let cachedText,
+       contentHash == newContentHash,
+       environmentHash == newEnvironmentHash {
+      return cachedText
+    }
+
+    let text = Text(attributedString: content, in: environment)
+    cachedText = text
+    contentHash = newContentHash
+    environmentHash = newEnvironmentHash
+    return text
   }
 }
 
