@@ -17,17 +17,25 @@ struct AttachmentOverlay: ViewModifier {
   }
 
   func body(content: Content) -> some View {
-    content
-      .overlayPreferenceValue(Text.LayoutKey.self) { value in
-        if let anchoredLayout = value.first {
-          GeometryReader { geometry in
-            AttachmentView(
-              attachments: attachments,
-              origin: geometry[anchoredLayout.origin],
-              layout: anchoredLayout.layout
-            )
+    // Installing overlayPreferenceValue forces SwiftUI to read Text.LayoutKey
+    // for every text fragment, which synchronously resolves line fragments via
+    // CoreText on the main thread. Skip it entirely when the fragment has no
+    // attachments to render.
+    if attachments.isEmpty {
+      content
+    } else {
+      content
+        .overlayPreferenceValue(Text.LayoutKey.self) { value in
+          if let anchoredLayout = value.first {
+            GeometryReader { geometry in
+              AttachmentView(
+                attachments: attachments,
+                origin: geometry[anchoredLayout.origin],
+                layout: anchoredLayout.layout
+              )
+            }
           }
         }
-      }
+    }
   }
 }

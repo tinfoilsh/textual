@@ -31,21 +31,41 @@ struct WithAttachments<Content: View>: View {
   }
 
   var body: some View {
-    content(model.resolvedAttributedString ?? attributedString)
-      .task(id: attributedString) {
-        await model.resolveAttachments(
-          in: attributedString,
-          imageAttachmentLoader: imageAttachmentLoader,
-          emojiAttachmentLoader: emojiAttachmentLoader,
-          environment: colorEnvironment
-        )
-      }
+    let needsAttachmentResolution = attributedString.containsValues(
+      for: [\.imageURL, \.textual.emojiURL]
+    )
+
+    if needsAttachmentResolution {
+      content(model.displayedAttributedString(for: attributedString))
+        .task(id: attributedString) {
+          await model.resolveAttachments(
+            in: attributedString,
+            imageAttachmentLoader: imageAttachmentLoader,
+            emojiAttachmentLoader: emojiAttachmentLoader,
+            environment: colorEnvironment
+          )
+        }
+    } else {
+      content(attributedString)
+    }
   }
 }
 
 extension WithAttachments {
   @MainActor @Observable final class Model {
     var resolvedAttributedString: AttributedString?
+    @ObservationIgnored private var resolvedSourceHash: Int?
+
+    func displayedAttributedString(for attributedString: AttributedString) -> AttributedString {
+      guard
+        let resolvedAttributedString,
+        resolvedSourceHash == attributedString.hashValue
+      else {
+        return attributedString
+      }
+
+      return resolvedAttributedString
+    }
 
     func resolveAttachments(
       in attributedString: AttributedString,
@@ -110,6 +130,7 @@ extension WithAttachments {
       }
 
       self.resolvedAttributedString = attributedString
+      self.resolvedSourceHash = attributedString.hashValue
     }
   }
 }
