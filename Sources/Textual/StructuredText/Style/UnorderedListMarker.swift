@@ -29,10 +29,14 @@ extension EnvironmentValues {
 // MARK: - Symbol
 
 extension StructuredText {
-  /// A list marker that uses an SF Symbol.
+  /// A list marker that uses an SF Symbol or a text glyph.
   public struct SymbolListMarker: UnorderedListMarker {
-    private let symbolName: String
-    private let scale: CGFloat
+    private enum Source {
+      case symbol(name: String, scale: CGFloat)
+      case glyph(String)
+    }
+
+    private let source: Source
     private let minWidth: FontScaled<CGFloat>
 
     /// Creates a symbol marker.
@@ -46,15 +50,29 @@ extension StructuredText {
       scale: CGFloat = 1,
       minWidth: FontScaled<CGFloat> = .fontScaled(1.5)
     ) {
-      self.symbolName = symbolName
-      self.scale = scale
+      self.source = .symbol(name: symbolName, scale: scale)
+      self.minWidth = minWidth
+    }
+
+    init(
+      glyph: String,
+      minWidth: FontScaled<CGFloat> = .fontScaled(1.5)
+    ) {
+      self.source = .glyph(glyph)
       self.minWidth = minWidth
     }
 
     public func makeBody(configuration: Configuration) -> some View {
-      SwiftUI.Image(systemName: symbolName)
-        .textual.fontScale(scale)
-        .textual.frame(minWidth: minWidth, alignment: .trailing)
+      Group {
+        switch source {
+        case let .symbol(name, scale):
+          SwiftUI.Image(systemName: name)
+            .textual.fontScale(scale)
+        case let .glyph(text):
+          Text(text)
+        }
+      }
+      .textual.frame(minWidth: minWidth, alignment: .trailing)
     }
   }
 }
@@ -62,17 +80,17 @@ extension StructuredText {
 extension StructuredText.UnorderedListMarker where Self == StructuredText.SymbolListMarker {
   /// A filled-circle marker.
   public static var disc: Self {
-    .init(symbolName: "circle.fill", scale: 0.33)
+    .init(glyph: "•")
   }
 
   /// An outlined-circle marker.
   public static var circle: Self {
-    .init(symbolName: "circle", scale: 0.33)
+    .init(glyph: "◦")
   }
 
   /// A filled-square marker.
   public static var square: Self {
-    .init(symbolName: "square.fill", scale: 0.33)
+    .init(glyph: "▪")
   }
 }
 
