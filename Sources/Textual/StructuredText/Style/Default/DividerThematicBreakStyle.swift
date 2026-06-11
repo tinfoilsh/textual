@@ -10,7 +10,10 @@ extension StructuredText {
       Divider()
         .frame(minHeight: 1)
         .overlay(DynamicColor.grid)
-        .textual.blockSpacing(.fontScaled(top: 1.6, bottom: 1.6))
+        // The bottom spacing is smaller than the top because the following
+        // block contributes its own 0.8 em top spacing, which makes the
+        // perceived gap around the divider symmetric.
+        .textual.blockSpacing(.fontScaled(top: 1.6, bottom: 0.8))
     }
   }
 }
