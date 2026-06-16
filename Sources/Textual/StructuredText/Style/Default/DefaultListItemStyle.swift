@@ -14,7 +14,12 @@ extension StructuredText {
 
     public func makeBody(configuration: Configuration) -> some View {
       WithFontScaledValue(markerSpacing) {
-        HStack(alignment: .firstTextCenter, spacing: $0) {
+        // Align the marker to the top of the item content rather than to the first text baseline.
+        // Resolving `.firstTextBaseline` against arbitrarily nested block content forces SwiftUI to
+        // recurse the whole item subtree during stack sizing, which has been observed as a
+        // multi-second layout hang on long or deeply nested lists. The marker and the first line of
+        // content share the same font and line height, so top alignment matches their baselines.
+        HStack(alignment: .top, spacing: $0) {
           configuration.marker
           configuration.block
         }
