@@ -53,6 +53,10 @@ struct CodeToken: Hashable, Sendable {
     }
 
     func tokenizeSync(code: String, language: String) -> [CodeToken] {
+      // Prism runs in JavaScriptCore, whose garbage collection can block the caller for seconds on
+      // large inputs. Callers must invoke this off the main thread.
+      assert(!Thread.isMainThread, "CodeTokenizer.tokenizeSync must not run on the main thread")
+
       lock.lock()
       defer { lock.unlock() }
 

@@ -1,15 +1,25 @@
+import Foundation
 import SwiftUI
 
 // MARK: - Overview
 //
 // HighlightedTextFragment displays syntax-highlighted code using a two-phase approach.
-// Tokenization runs asynchronously and is keyed by content, while highlighting runs
-// synchronously on token or environment changes (theme, color scheme, dynamic type).
+//
+// The first render shows a base rendering that applies only the theme's foreground color to the
+// whole code string. This is cheap and never touches JavaScriptCore. When the active theme defines
+// token colors and the code is within the size limit, Prism tokenization runs off the main thread
+// and the colored result is published back to SwiftUI. Running tokenization synchronously inside
+// `body` blocks the main thread on JavaScriptCore garbage collection, which has been observed as a
+// multi-second hang on large code blocks.
 //
 // The presentationIntent is preserved after highlighting so pasteboard formatters can
 // reconstruct the block structure when copying code.
 
 struct HighlightedTextFragment: View {
+  // Code blocks larger than this skip Prism tokenization and render with base colors only, to
+  // bound JavaScriptCore work on very large inputs.
+  private static let maxHighlightCharacters = 15_000
+
   @Environment(\.textEnvironment) private var textEnvironment
 
   private let content: AttributedSubstring
@@ -17,6 +27,8 @@ struct HighlightedTextFragment: View {
   private let theme: StructuredText.HighlighterTheme
 
   @State private var cache = HighlightedCodeCache()
+  @State private var highlighted: AttributedString?
+  @State private var highlightedKey: HighlightedCodeCache.Key?
 
   init(
     _ content: AttributedSubstring,
@@ -35,31 +47,73 @@ struct HighlightedTextFragment: View {
       theme: theme,
       environment: textEnvironment
     )
-    TextFragment(cache.value(for: key) { highlightedCode })
+    let base = cache.value(for: key) { baseAttributedString(for: key) }
+    let display = (highlightedKey == key ? highlighted : nil) ?? base
+
+    TextFragment(display)
       .foregroundStyle(theme.foregroundColor)
+      .task(id: key) {
+        await updateHighlight(for: key)
+      }
   }
 
-  private var highlightedCode: AttributedString {
-    let code = String(content.characters[...])
+  private func baseAttributedString(for key: HighlightedCodeCache.Key) -> AttributedString {
+    Self.attributedString(
+      tokens: [CodeToken(content: key.code, type: .plain)],
+      presentationIntent: content.presentationIntent,
+      theme: theme,
+      environment: textEnvironment
+    )
+  }
 
-    let tokens: [CodeToken]
-    if let tokenizer = CodeTokenizer.shared, let languageHint {
-      tokens = tokenizer.tokenizeSync(code: code, language: languageHint)
-    } else {
-      tokens = [CodeToken(content: code, type: .plain)]
+  private func updateHighlight(for key: HighlightedCodeCache.Key) async {
+    guard
+      !theme.tokenProperties.isEmpty,
+      let languageHint,
+      key.code.count <= Self.maxHighlightCharacters,
+      let tokenizer = CodeTokenizer.shared
+    else {
+      return
     }
 
+    let code = key.code
+    let theme = self.theme
+    let environment = textEnvironment
+    let presentationIntent = content.presentationIntent
+
+    let result = await Task.detached(priority: .userInitiated) { () -> AttributedString in
+      let tokens = tokenizer.tokenizeSync(code: code, language: languageHint)
+      return Self.attributedString(
+        tokens: tokens,
+        presentationIntent: presentationIntent,
+        theme: theme,
+        environment: environment
+      )
+    }.value
+
+    guard !Task.isCancelled else { return }
+
+    highlighted = result
+    highlightedKey = key
+  }
+
+  private nonisolated static func attributedString(
+    tokens: [CodeToken],
+    presentationIntent: PresentationIntent?,
+    theme: StructuredText.HighlighterTheme,
+    environment: TextEnvironmentValues
+  ) -> AttributedString {
     var attributes = AttributeContainer()
-    attributes.presentationIntent = content.presentationIntent
+    attributes.presentationIntent = presentationIntent
     ForegroundColorProperty(theme.foregroundColor)
-      .apply(in: &attributes, environment: textEnvironment)
+      .apply(in: &attributes, environment: environment)
 
     var result = AttributedString()
     for token in tokens {
       var tokenContent = AttributedString(token.content)
       var tokenAttributes = attributes
       if let tokenProperties = theme.tokenProperties[token.type] {
-        tokenProperties.apply(in: &tokenAttributes, environment: textEnvironment)
+        tokenProperties.apply(in: &tokenAttributes, environment: environment)
       }
       tokenContent.mergeAttributes(tokenAttributes)
       result.append(tokenContent)
