@@ -32,7 +32,14 @@ public struct FontScaled<Value> where Value: FontScalable {
 
   /// Returns the value scaled for the given environment.
   public func resolve(in environment: TextEnvironmentValues) -> Value {
-    let font = environment.font ?? .body
+    guard let font = environment.font else {
+      // Common case: no explicit font in the environment. Resolve the body text style size
+      // directly instead of reflecting `Font` internals via `Mirror`. Reflection is expensive and
+      // otherwise runs for every font-scaled value (block, list, and marker spacing) on every
+      // layout pass.
+      let bodySize = TextStyleFontProvider(style: .body).size(in: environment)
+      return value.scaled(by: bodySize)
+    }
 
     guard let fontSize = font.provider()?.size(in: environment) else {
       return value
