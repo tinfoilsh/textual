@@ -34,8 +34,14 @@
         "[UITextRangeWrapper] start position must be <= end position"
       )
 
-      self._start = start
-      self._end = end
+      // Normalize inverted bounds in release builds so UIKit never receives a backwards range.
+      if start.wrappedValue <= end.wrappedValue {
+        self._start = start
+        self._end = end
+      } else {
+        self._start = end
+        self._end = start
+      }
     }
 
     convenience init(from: TextPositionBox, to: TextPositionBox) {

@@ -32,8 +32,16 @@
     init(start: TextPosition, end: TextPosition) {
       assert(start <= end)
 
-      self.start = start
-      self.end = end
+      // Normalize inverted bounds in release builds. The assert above flags the programming error in
+      // debug, but a surviving inverted range would trap downstream array indexing, so order the
+      // bounds defensively rather than trusting the precondition.
+      if start <= end {
+        self.start = start
+        self.end = end
+      } else {
+        self.start = end
+        self.end = start
+      }
     }
 
     func contains(_ position: TextPosition) -> Bool {

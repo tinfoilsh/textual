@@ -50,13 +50,18 @@
         return range
       }
 
-      // Clamp the range to stay within the layout boundaries
-      let clampedRange = TextRange(
-        start: max(rawStart, blockRange.start),
-        end: min(rawEnd, blockRange.end)
-      )
+      // Clamp the range to stay within the block boundaries. If the word/sentence range reported by
+      // the system tokenizer does not overlap the block, the clamped bounds invert; returning that
+      // range would let UIKit's selection expansion build an out-of-bounds selection. Return nil so
+      // UIKit falls back to a valid range instead.
+      let clampedStart = max(rawStart, blockRange.start)
+      let clampedEnd = min(rawEnd, blockRange.end)
 
-      return TextRangeBox(clampedRange)
+      guard clampedStart <= clampedEnd else {
+        return nil
+      }
+
+      return TextRangeBox(TextRange(start: clampedStart, end: clampedEnd))
     }
 
     func isPosition(
