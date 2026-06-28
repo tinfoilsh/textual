@@ -22,10 +22,17 @@ struct WithCitations<Content: View>: View {
   }
 
   var body: some View {
-    content(resolved)
+    content(CitationResolver.resolve(input, configuration: configuration))
   }
+}
 
-  private var resolved: AttributedString {
+// Rewrites link runs whose URL matches a configured citation into inline citation chip
+// attachments. Extracted from the view so the matching logic can be unit tested.
+enum CitationResolver {
+  static func resolve(
+    _ input: AttributedString,
+    configuration: CitationConfiguration?
+  ) -> AttributedString {
     guard
       let configuration,
       !configuration.urls.isEmpty,
@@ -34,17 +41,19 @@ struct WithCitations<Content: View>: View {
       return input
     }
 
+    let normalizedURLs = Set(configuration.urls.map(normalize))
+
     var output = input
     for run in input.runs {
       guard
         let link = run.link,
-        configuration.urls.contains(link.absoluteString)
+        normalizedURLs.contains(normalize(link.absoluteString))
       else {
         continue
       }
 
       let chip = CitationChipAttachment(
-        label: Self.label(for: link),
+        label: label(for: link),
         urlString: link.absoluteString,
         style: configuration.style
       )
@@ -53,8 +62,25 @@ struct WithCitations<Content: View>: View {
     return output
   }
 
+  // Normalizes a URL string so citations match despite trivial differences (scheme, trailing
+  // slash, or a leading `www.`).
+  static func normalize(_ urlString: String) -> String {
+    var value = urlString.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    for scheme in ["https://", "http://"] where value.hasPrefix(scheme) {
+      value.removeFirst(scheme.count)
+      break
+    }
+    if value.hasPrefix("www.") {
+      value.removeFirst(4)
+    }
+    while value.hasSuffix("/") {
+      value.removeLast()
+    }
+    return value
+  }
+
   // Display text for a citation chip: the source host without a leading `www.`.
-  private static func label(for url: URL) -> String {
+  static func label(for url: URL) -> String {
     guard let host = url.host, !host.isEmpty else {
       return url.absoluteString
     }
