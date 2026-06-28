@@ -95,7 +95,7 @@ private struct CitationChipView: View {
   var body: some View {
     let metrics = CitationChipMetrics.resolve(label: label, style: style, in: environment)
     HStack(spacing: metrics.iconSpacing) {
-      Image(systemName: style.iconSystemName)
+      SwiftUI.Image(systemName: style.iconSystemName)
         .font(.system(size: metrics.iconSize * 0.9, weight: .semibold))
         .frame(width: metrics.iconSize, height: metrics.iconSize)
         .foregroundStyle(style.iconColor)
