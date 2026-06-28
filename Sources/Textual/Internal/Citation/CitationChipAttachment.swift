@@ -33,6 +33,10 @@ struct CitationChipAttachment: Attachment {
   func sizeThatFits(_: ProposedViewSize, in environment: TextEnvironmentValues) -> CGSize {
     CitationChipMetrics.resolve(label: label, style: style, in: environment).size
   }
+
+  var reservesPlaceholderWidth: Bool {
+    true
+  }
 }
 
 // Resolves chip geometry from the surrounding text environment. Both the attachment's sizing and

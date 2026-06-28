@@ -38,6 +38,13 @@ public protocol Attachment: Sendable, Hashable, CustomStringConvertible {
   /// Returns the attachment size for the given proposal.
   func sizeThatFits(_ proposal: ProposedViewSize, in environment: TextEnvironmentValues) -> CGSize
 
+  /// Indicates whether the attachment should reserve inline width matching its size.
+  ///
+  /// The default implementation returns `false`, so the attachment is drawn into the run's
+  /// object-replacement glyph bounds. Return `true` for wide attachments (for example, chips)
+  /// that need to reserve horizontal space in the line.
+  var reservesPlaceholderWidth: Bool { get }
+
   /// Returns a PNG representation of the attachment, if available.
   ///
   /// Implement this to provide PNG-encoded data for serialization, copy/paste,
@@ -52,6 +59,10 @@ extension Attachment {
 
   public func baselineOffset(in _: TextEnvironmentValues) -> CGFloat {
     0
+  }
+
+  public var reservesPlaceholderWidth: Bool {
+    false
   }
 
   public func pngData() -> Data? {
@@ -93,6 +104,10 @@ public struct AnyAttachment: Attachment {
 
   public func baselineOffset(in environment: TextEnvironmentValues) -> CGFloat {
     base.baselineOffset(in: environment)
+  }
+
+  public var reservesPlaceholderWidth: Bool {
+    base.reservesPlaceholderWidth
   }
 
   public func sizeThatFits(
