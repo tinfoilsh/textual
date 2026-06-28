@@ -116,9 +116,11 @@ public struct StructuredText: View {
   public var body: some View {
     let attributedString = (try? parser.attributedString(for: markup)) ?? AttributedString()
     WithAttachments(attributedString) {
-      BlockContent(content: $0)
-        .modifier(TextSelectionInteraction())
-        .modifier(TextSelectionCoordination())
+      WithCitations($0) {
+        BlockContent(content: $0)
+          .modifier(TextSelectionInteraction())
+          .modifier(TextSelectionCoordination())
+      }
     }
     .coordinateSpace(.textContainer)
     // Disable line limit to avoid per-fragment truncation
