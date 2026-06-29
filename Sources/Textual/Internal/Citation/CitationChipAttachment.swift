@@ -23,7 +23,7 @@ struct CitationChipAttachment: Attachment {
   }
 
   var body: some View {
-    CitationChipView(label: label, style: style)
+    CitationChipView(label: label, urlString: urlString, style: style)
   }
 
   func baselineOffset(in environment: TextEnvironmentValues) -> CGFloat {
@@ -93,16 +93,22 @@ struct CitationChipMetrics {
 
 private struct CitationChipView: View {
   @Environment(\.textEnvironment) private var environment
+  @Environment(\.citationFaviconProvider) private var faviconProvider
+  @ObservedObject private var faviconStore = CitationFaviconStore.shared
   let label: String
+  let urlString: String
   let style: CitationStyle
 
   var body: some View {
     let metrics = CitationChipMetrics.resolve(label: label, style: style, in: environment)
-    HStack(spacing: metrics.iconSpacing) {
-      SwiftUI.Image(systemName: style.iconSystemName)
-        .font(.system(size: metrics.iconSize * 0.9, weight: .semibold))
-        .frame(width: metrics.iconSize, height: metrics.iconSize)
-        .foregroundStyle(style.iconColor)
+    if style.showsFavicon,
+       let provider = faviconProvider,
+       faviconStore.favicon(for: urlString) == nil,
+       let url = URL(string: urlString) {
+      faviconStore.loadIfNeeded(url: url, provider: provider)
+    }
+    return HStack(spacing: metrics.iconSpacing) {
+      icon(metrics: metrics)
       Text(label)
         .font(.system(size: metrics.fontSize, weight: style.fontWeight.swiftUIWeight))
         .foregroundStyle(style.foregroundColor)
@@ -113,6 +119,23 @@ private struct CitationChipView: View {
     .padding(.vertical, metrics.verticalPadding)
     .frame(width: metrics.size.width, height: metrics.size.height)
     .background(Capsule().fill(style.backgroundColor))
+  }
+
+  @ViewBuilder
+  private func icon(metrics: CitationChipMetrics) -> some View {
+    if style.showsFavicon, let favicon = faviconStore.favicon(for: urlString) {
+      SwiftUI.Image(decorative: favicon, scale: 1)
+        .resizable()
+        .interpolation(.high)
+        .scaledToFit()
+        .frame(width: metrics.iconSize, height: metrics.iconSize)
+        .clipShape(RoundedRectangle(cornerRadius: metrics.iconSize * 0.2, style: .continuous))
+    } else {
+      SwiftUI.Image(systemName: style.iconSystemName)
+        .font(.system(size: metrics.iconSize * 0.9, weight: .semibold))
+        .frame(width: metrics.iconSize, height: metrics.iconSize)
+        .foregroundStyle(style.iconColor)
+    }
   }
 }
 

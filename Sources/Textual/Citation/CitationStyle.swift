@@ -33,6 +33,11 @@ public struct CitationStyle: Sendable, Hashable {
   public var verticalPadding: CGFloat
   /// Spacing between the chip's icon and label.
   public var iconSpacing: CGFloat
+  /// Whether the chip shows the source's favicon, falling back to the icon when unavailable.
+  ///
+  /// Favicons load through the provider set with ``TextualNamespace/citationFaviconProvider(_:)``;
+  /// with no provider the chip always shows the icon.
+  public var showsFavicon: Bool
 
   public init(
     foregroundColor: Color,
@@ -43,7 +48,8 @@ public struct CitationStyle: Sendable, Hashable {
     fontWeight: CitationFontWeight,
     horizontalPadding: CGFloat,
     verticalPadding: CGFloat,
-    iconSpacing: CGFloat
+    iconSpacing: CGFloat,
+    showsFavicon: Bool = true
   ) {
     self.foregroundColor = foregroundColor
     self.backgroundColor = backgroundColor
@@ -54,6 +60,7 @@ public struct CitationStyle: Sendable, Hashable {
     self.horizontalPadding = horizontalPadding
     self.verticalPadding = verticalPadding
     self.iconSpacing = iconSpacing
+    self.showsFavicon = showsFavicon
   }
 
   /// A default citation chip style: an accent-tinted pill with a globe icon and the source domain.
