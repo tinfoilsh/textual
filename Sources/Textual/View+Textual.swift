@@ -206,6 +206,18 @@ extension TextualNamespace where Base: View {
     )
   }
 
+  /// Sets the provider used to load source favicons for citation chips.
+  ///
+  /// The provider receives a citation's URL and returns the favicon's encoded image bytes, or `nil`
+  /// when none is available. Textual performs no favicon networking itself, so without a provider
+  /// chips show their fallback icon. Use this to route favicon loading through your own
+  /// infrastructure.
+  public func citationFaviconProvider(
+    _ provider: @escaping CitationFaviconProvider
+  ) -> some View {
+    base.environment(\.citationFaviconProvider, provider)
+  }
+
   /// Sets the paragraph style used by ``StructuredText``.
   @inlinable
   public func paragraphStyle(_ paragraphStyle: some StructuredText.ParagraphStyle) -> some View {
