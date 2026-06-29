@@ -13,6 +13,21 @@ extension Text {
     self.init(attributedString: attributedString, attachmentSizes: [:], in: environment)
   }
 
+  /// Creates a Text reserving inline space for attachments that opt into width reservation.
+  ///
+  /// Attachments that don't reserve width (images, emoji, math) keep their existing behavior of
+  /// being drawn into the run's object-replacement glyph bounds.
+  init(
+    attributedString: some AttributedStringProtocol,
+    reservingWidthIn environment: TextEnvironmentValues
+  ) {
+    self.init(
+      attributedString: attributedString,
+      attachmentSizes: attributedString.widthReservingAttachmentSizes(in: environment),
+      in: environment
+    )
+  }
+
   fileprivate init(
     attributedString: some AttributedStringProtocol,
     attachmentSizes: [AttachmentKey: CGSize],
@@ -90,6 +105,31 @@ extension AttributedStringProtocol {
             font: environment.font
           ),
           attachment.sizeThatFits(proposal, in: environment)
+        )
+      },
+      uniquingKeysWith: { existing, _ in existing }
+    )
+  }
+
+  fileprivate func widthReservingAttachmentSizes(
+    in environment: TextEnvironmentValues
+  ) -> [AttachmentKey: CGSize] {
+    Dictionary(
+      self.runs.compactMap { run in
+        guard
+          let attachment = run.textual.attachment,
+          attachment.reservesPlaceholderWidth
+        else {
+          return nil
+        }
+        var environment = environment
+        environment.font = run.font ?? environment.font
+        return (
+          AttachmentKey(
+            attachment: attachment,
+            font: environment.font
+          ),
+          attachment.sizeThatFits(.unspecified, in: environment)
         )
       },
       uniquingKeysWith: { existing, _ in existing }

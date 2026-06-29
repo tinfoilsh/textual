@@ -189,6 +189,23 @@ extension TextualNamespace where Base: View {
     base.environment(\.inlineStyle, style)
   }
 
+  /// Renders links whose URL is in `urls` as inline citation chips in ``InlineText`` and
+  /// ``StructuredText``.
+  ///
+  /// Each matching link is replaced by a compact pill showing the source domain and an icon,
+  /// making citations visually distinct from regular links. Tapping a chip opens its URL just like
+  /// a regular link. Passing an empty set leaves all links rendered normally.
+  ///
+  /// - Parameters:
+  ///   - urls: The set of link URL strings to render as citation chips.
+  ///   - style: The appearance of the citation chips. Defaults to ``CitationStyle/default``.
+  public func citations(_ urls: Set<String>, style: CitationStyle = .default) -> some View {
+    base.environment(
+      \.citationConfiguration,
+      urls.isEmpty ? nil : CitationConfiguration(urls: urls, style: style)
+    )
+  }
+
   /// Sets the paragraph style used by ``StructuredText``.
   @inlinable
   public func paragraphStyle(_ paragraphStyle: some StructuredText.ParagraphStyle) -> some View {

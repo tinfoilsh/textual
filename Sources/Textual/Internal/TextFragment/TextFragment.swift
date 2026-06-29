@@ -104,7 +104,7 @@ private final class TextStore {
       return cachedText
     }
 
-    let text = Text(attributedString: content, in: environment)
+    let text = Text(attributedString: content, reservingWidthIn: environment)
     cachedText = text
     contentHash = newContentHash
     environmentHash = newEnvironmentHash
