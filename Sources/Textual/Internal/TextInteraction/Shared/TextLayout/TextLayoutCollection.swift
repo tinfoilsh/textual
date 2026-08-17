@@ -39,12 +39,21 @@
 
   protocol TextLayout {
     var attributedString: NSAttributedString { get }
+    var isEmpty: Bool { get }
     var origin: CGPoint { get }
     var bounds: CGRect { get }
     var lines: [any TextLine] { get }
   }
 
   extension TextLayout {
+    var isEmpty: Bool {
+      lines.allSatisfy { line in
+        line.runs.allSatisfy { run in
+          run.slices.allSatisfy { $0.characterRange.isEmpty }
+        }
+      }
+    }
+
     var frame: CGRect {
       bounds.offsetBy(dx: origin.x, dy: origin.y)
     }

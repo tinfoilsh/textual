@@ -151,7 +151,7 @@
 
   extension TextSelectionModel {
     var hasText: Bool {
-      layoutCollection.stringLength > 0
+      layoutCollection.layouts.contains { !$0.isEmpty }
     }
 
     var startPosition: TextPosition {
