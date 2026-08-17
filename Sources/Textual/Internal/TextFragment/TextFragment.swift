@@ -88,26 +88,23 @@ private struct CachedTextFragment: View {
 @MainActor
 private final class TextStore {
   private var cachedText: Text?
-  private var contentHash: Int?
-  private var environmentHash: Int?
+  private var cachedContent: AttributedString?
+  private var cachedEnvironment: TextEnvironmentValues?
 
   func text(
     for content: AttributedString,
     environment: TextEnvironmentValues
   ) -> Text {
-    let newContentHash = content.hashValue
-    let newEnvironmentHash = environment.hashValue
-
     if let cachedText,
-       contentHash == newContentHash,
-       environmentHash == newEnvironmentHash {
+       cachedContent == content,
+       cachedEnvironment == environment {
       return cachedText
     }
 
     let text = Text(attributedString: content, reservingWidthIn: environment)
     cachedText = text
-    contentHash = newContentHash
-    environmentHash = newEnvironmentHash
+    cachedContent = content
+    cachedEnvironment = environment
     return text
   }
 }

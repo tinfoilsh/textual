@@ -47,6 +47,10 @@
 
     let origin: CGPoint
 
+    var isEmpty: Bool {
+      base.isEmpty
+    }
+
     private(set) lazy var bounds: CGRect = makeBounds()
     private(set) lazy var lines: [any TextLine] = makeLines()
 

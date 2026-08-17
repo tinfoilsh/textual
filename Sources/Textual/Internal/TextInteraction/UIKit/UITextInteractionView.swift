@@ -93,6 +93,12 @@
       model.selectionDidChange = { [weak self] in
         guard let self else { return }
         self.inputDelegate?.selectionDidChange(self)
+        if let selectedRange = self.model.selectedRange,
+          !selectedRange.isCollapsed,
+          !self.isFirstResponder
+        {
+          _ = self.becomeFirstResponder()
+        }
       }
     }
 
@@ -166,7 +172,6 @@
     func interactionWillBegin(_ interaction: UITextInteraction) {
       logger.debug("interactionWillBegin")
       model.setInteractionActive(true)
-      _ = self.becomeFirstResponder()
     }
 
     func interactionDidEnd(_ interaction: UITextInteraction) {

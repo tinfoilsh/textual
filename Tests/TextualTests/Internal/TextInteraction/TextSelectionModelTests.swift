@@ -50,6 +50,18 @@
     }
 
     @Test
+    func hasTextDoesNotMaterializeAttributedContent() {
+      let accessCounter = AttributedStringAccessCounter()
+      let layout = HasTextLayout(isEmpty: false, accessCounter: accessCounter)
+      let model = TextSelectionModel(
+        layoutCollection: HasTextLayoutCollection(layouts: [layout])
+      )
+
+      #expect(model.hasText)
+      #expect(accessCounter.count == 0)
+    }
+
+    @Test
     func startPosition() throws {
       // given
       let model = try TextSelectionModel(fixtureName: "two-paragraphs-bidi")
@@ -991,6 +1003,40 @@
       let data = try url.map { try Data(contentsOf: $0) } ?? Data()
       let base = try JSONDecoder().decode(CodableTextLayoutCollection.self, from: data)
       return Self(base: base, identity: identity)
+    }
+  }
+
+  private final class AttributedStringAccessCounter {
+    var count = 0
+  }
+
+  private struct HasTextLayout: Textual.TextLayout {
+    let isEmpty: Bool
+    let accessCounter: AttributedStringAccessCounter
+
+    var attributedString: NSAttributedString {
+      accessCounter.count += 1
+      return NSAttributedString(string: "content")
+    }
+
+    let origin = CGPoint.zero
+    let bounds = CGRect.zero
+    let lines: [any Textual.TextLine] = []
+  }
+
+  private struct HasTextLayoutCollection: Textual.TextLayoutCollection {
+    let layouts: [any Textual.TextLayout]
+
+    func isEqual(to other: any Textual.TextLayoutCollection) -> Bool {
+      other is Self
+    }
+
+    func needsPositionReconciliation(with other: any Textual.TextLayoutCollection) -> Bool {
+      false
+    }
+
+    func index(of layout: Text.Layout) -> Int? {
+      nil
     }
   }
 #endif

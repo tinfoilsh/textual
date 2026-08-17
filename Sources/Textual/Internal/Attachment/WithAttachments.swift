@@ -54,12 +54,12 @@ struct WithAttachments<Content: View>: View {
 extension WithAttachments {
   @MainActor @Observable final class Model {
     var resolvedAttributedString: AttributedString?
-    @ObservationIgnored private var resolvedSourceHash: Int?
+    @ObservationIgnored private var resolvedSource: AttributedString?
 
     func displayedAttributedString(for attributedString: AttributedString) -> AttributedString {
       guard
         let resolvedAttributedString,
-        resolvedSourceHash == attributedString.hashValue
+        resolvedSource == attributedString
       else {
         return attributedString
       }
@@ -119,18 +119,19 @@ extension WithAttachments {
       )
     }
 
-    private func resolveAttachmentsFinished(
+    func resolveAttachmentsFinished(
       attributedString: AttributedString,
       attachments: [(Range<AttributedString.Index>, AnyAttachment)]
     ) {
-      var attributedString = attributedString
+      let source = attributedString
+      var resolved = attributedString
 
       for (range, attachment) in attachments {
-        attributedString[range].textual.attachment = attachment
+        resolved[range].textual.attachment = attachment
       }
 
-      self.resolvedAttributedString = attributedString
-      self.resolvedSourceHash = attributedString.hashValue
+      self.resolvedAttributedString = resolved
+      self.resolvedSource = source
     }
   }
 }

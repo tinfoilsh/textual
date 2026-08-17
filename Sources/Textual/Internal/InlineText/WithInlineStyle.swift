@@ -33,9 +33,9 @@ struct WithInlineStyle<Content: View>: View {
 
   var body: some View {
     let key = InlineStyleCache.Key(
-      inputHash: input.hashValue,
-      styleHash: style.hashValue,
-      environmentHash: environment.hashValue
+      input: input,
+      style: style,
+      environment: environment
     )
     content(
       cache.value(for: key) {
@@ -85,10 +85,10 @@ struct WithInlineStyle<Content: View>: View {
 
 @MainActor
 private final class InlineStyleCache {
-  struct Key: Hashable {
-    let inputHash: Int
-    let styleHash: Int
-    let environmentHash: Int
+  struct Key: Equatable {
+    let input: AttributedString
+    let style: InlineStyle
+    let environment: TextEnvironmentValues
   }
 
   private var cachedKey: Key?
