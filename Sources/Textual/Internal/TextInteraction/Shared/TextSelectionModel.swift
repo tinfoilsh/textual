@@ -36,6 +36,11 @@
     @ObservationIgnored
     var selectionDidChange: (() -> Void)?
 
+    // Layout updates are ignored for observation, so a platform view that waits for text
+    // learns about it here rather than from a SwiftUI update that may never come.
+    @ObservationIgnored
+    var layoutCollectionDidChange: (() -> Void)?
+
     @ObservationIgnored
     private var layoutCollection: any TextLayoutCollection
 
@@ -69,6 +74,7 @@
 
       let previousLayoutCollection = AnyTextLayoutCollection(self.layoutCollection)
       self.layoutCollection = layoutCollection
+      layoutCollectionDidChange?()
 
       guard let selectedRange else {
         return

@@ -100,6 +100,9 @@
           _ = self.becomeFirstResponder()
         }
       }
+      model.layoutCollectionDidChange = { [weak self] in
+        self?.installInteractionIfNeeded()
+      }
     }
 
     func installInteractionIfNeeded() {
