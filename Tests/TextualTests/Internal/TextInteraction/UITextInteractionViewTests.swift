@@ -2,6 +2,7 @@
   import Foundation
   import SwiftUI
   import Testing
+  import UIKit
 
   @testable import Textual
 
@@ -33,6 +34,29 @@
 
       // then
       #expect(view.interactions.contains { $0 is UITextInteraction })
+    }
+
+    @Test
+    func keepsCopyAvailableAfterSelectionGestureEnds() throws {
+      let model = try TextSelectionModel(fixtureName: "two-paragraphs-bidi")
+      let view = UITextInteractionView(
+        model: model,
+        exclusionRects: [],
+        openURL: OpenURLAction { _ in .handled }
+      )
+      let interaction = try #require(
+        view.interactions.compactMap { $0 as? UITextInteraction }.first
+      )
+      let selectedRange = TextRange(start: model.startPosition, end: model.endPosition)
+
+      view.interactionWillBegin(interaction)
+      model.selectedRange = selectedRange
+      view.interactionDidEnd(interaction)
+
+      #expect(model.selectedRange == selectedRange)
+      #expect(
+        view.canPerformAction(#selector(UIResponderStandardEditActions.copy(_:)), withSender: nil)
+      )
     }
   }
 #endif

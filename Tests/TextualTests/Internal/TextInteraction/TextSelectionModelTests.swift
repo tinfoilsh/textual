@@ -943,6 +943,27 @@
       // then
       #expect(changeCount == 0)
       #expect(model.selectedRange == TextRange(start: model.startPosition, end: model.endPosition))
+
+      model.setInteractionActive(true)
+      model.setInteractionActive(false)
+
+      #expect(changeCount == 0)
+      #expect(model.selectedRange == TextRange(start: model.startPosition, end: model.endPosition))
+    }
+
+    @Test
+    func clearsSelectionAfterInteractionWhenSelectedTextWasRemoved() throws {
+      let model = try TextSelectionModel(fixtureName: "two-paragraphs-bidi")
+      let selectedRange = TextRange(start: model.startPosition, end: model.endPosition)
+      model.selectedRange = selectedRange
+      let emptyCollection = try TestTextLayoutCollection.fixture(named: "empty", identity: 1)
+
+      model.setInteractionActive(true)
+      model.setLayoutCollection(emptyCollection)
+      #expect(model.selectedRange == selectedRange)
+      model.setInteractionActive(false)
+
+      #expect(model.selectedRange == nil)
     }
 
     #if os(iOS)
