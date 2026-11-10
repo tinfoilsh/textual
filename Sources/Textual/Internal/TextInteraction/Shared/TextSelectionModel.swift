@@ -114,7 +114,8 @@
 
       isInteractionActive = isActive
 
-      guard !isActive else {
+      // A deferred nil range clears selection; no deferred layout leaves it alone.
+      guard !isActive, deferredSelectionLayoutCollection != nil else {
         return
       }
 
