@@ -211,6 +211,62 @@
     }
 
     @Test
+    func offsetEmptyModel() throws {
+      // given
+      let model = try TextSelectionModel(fixtureName: "empty")
+
+      // when
+      let offset = model.offset(from: model.startPosition, to: model.endPosition)
+
+      // then
+      #expect(offset == 0)
+    }
+
+    @Test
+    func offsetToPositionPastLastLayout() throws {
+      // given
+      let model = try TextSelectionModel(fixtureName: "two-paragraphs-bidi")
+      let stale = TextPosition(
+        indexPath: .init(runSlice: 0, run: 0, line: 0, layout: 2),
+        affinity: .downstream
+      )
+
+      // when
+      let offset = model.offset(from: model.startPosition, to: stale)
+
+      // then
+      #expect(offset == 102)
+    }
+
+    @Test
+    func offsetToPositionPastLastLineOfLayout() throws {
+      // given
+      let model = try TextSelectionModel(fixtureName: "two-paragraphs-bidi")
+      let stale = TextPosition(
+        indexPath: .init(runSlice: 0, run: 0, line: 2, layout: 0),
+        affinity: .downstream
+      )
+
+      // when
+      let offset = model.offset(from: model.startPosition, to: stale)
+
+      // then
+      #expect(offset == 51)
+    }
+
+    @Test
+    func layoutDirectionOnEmptyModel() throws {
+      // given
+      let model = try TextSelectionModel(fixtureName: "empty")
+
+      // when
+      let layoutDirection = model.layoutDirection(at: model.startPosition)
+
+      // then
+      #expect(layoutDirection == .leftToRight)
+    }
+
+    @Test
     func firstRectCollapsedRange() throws {
       // given
       let model = try TextSelectionModel(fixtureName: "two-paragraphs-bidi")
