@@ -74,16 +74,35 @@
       }
     }
 
+    // A position can name a slice that is not there: an empty text has positions but no slices,
+    // and UIKit keeps the positions it was given while the text is laid out again. Such a
+    // position reads as the end of its layout, or of the text when its layout is gone too.
+
     func localCharacterRange(at indexPath: IndexPath) -> Range<Int> {
-      let line = layouts[indexPath.layout].lines[indexPath.line]
-      return line.runs[indexPath.run]
-        .slices[indexPath.runSlice]
-        .characterRange
+      let layouts = self.layouts
+      guard layouts.indices.contains(indexPath.layout) else {
+        return 0..<0
+      }
+      let layout = layouts[indexPath.layout]
+      guard
+        let slices = layout.run(at: indexPath)?.slices,
+        slices.indices.contains(indexPath.runSlice)
+      else {
+        let end = layout.attributedString.length
+        return end..<end
+      }
+      return slices[indexPath.runSlice].characterRange
     }
 
     func layoutDirection(at indexPath: IndexPath) -> LayoutDirection {
-      let line = layouts[indexPath.layout].lines[indexPath.line]
-      return line.runs[indexPath.run].layoutDirection
+      let layouts = self.layouts
+      guard
+        layouts.indices.contains(indexPath.layout),
+        let run = layouts[indexPath.layout].run(at: indexPath)
+      else {
+        return .leftToRight
+      }
+      return run.layoutDirection
     }
 
     func position(at layoutIndex: Int, localCharacterIndex: Int) -> TextPosition? {
@@ -293,6 +312,20 @@
       }
 
       return end
+    }
+  }
+
+  extension TextLayout {
+    fileprivate func run(at indexPath: IndexPath) -> (any TextRun)? {
+      let lines = self.lines
+      guard lines.indices.contains(indexPath.line) else {
+        return nil
+      }
+      let runs = lines[indexPath.line].runs
+      guard runs.indices.contains(indexPath.run) else {
+        return nil
+      }
+      return runs[indexPath.run]
     }
   }
 
